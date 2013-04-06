@@ -2,11 +2,14 @@ var fs = require("fs");
 
 function createIndex(config, jsFiles, cssFiles, htmlFiles){
     try{
+
         var template = fs.readFileSync(target["template"]).toString();
         template = template.replace("%REGISTER_STYLES%", cssFiles);
         template = template.replace("%REGISTER_CODE%"  , jsFiles);
         template = template.replace("%REGISTER_VIEWS%" , htmlFiles);
-        //console.log(template);
+        template = template.replace("%MAIN_VIEW%" , config.mainView);
+        template = template.replace("%MAIN_CTRL%" , config.mainCtrl);
+
         console.log("Creating " + config["target"]);
         fs.writeFileSync(config.target,template);
     } catch(err){
@@ -29,6 +32,7 @@ function walk(fileFormat,pathList, callBack){
         } else {
             if(allFiles[path] == undefined){
                 path = path.replace("//","/");
+                path = path.replace(/^\.\//,"");
                 if(path.match(fileFormat) != null){
                     allFiles[path] = path;
                     callBack(path, basePath);
