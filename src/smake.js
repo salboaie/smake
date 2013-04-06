@@ -2,7 +2,6 @@ var fs = require("fs");
 
 function createIndex(config, jsFiles, cssFiles, htmlFiles){
     try{
-
         var template = fs.readFileSync(target["template"]).toString();
         template = template.replace("%REGISTER_STYLES%", cssFiles);
         template = template.replace("%REGISTER_CODE%"  , jsFiles);
@@ -10,11 +9,11 @@ function createIndex(config, jsFiles, cssFiles, htmlFiles){
         template = template.replace("%MAIN_VIEW%" , config.mainView);
         template = template.replace("%MAIN_CTRL%" , config.mainCtrl);
 
-        console.log("Creating " + config["target"]);
+        console.log("Creating " + config.target);
         fs.writeFileSync(config.target,template);
     } catch(err){
         console.log("Error: " + err + "\nStack:" +  err.stack);
-     throw new Error("Unable to create a build index file");
+     throw new Error("Unable to create the target file!");
     }
 }
 
@@ -73,7 +72,7 @@ function resolveHTMLFiles(config, callBack){
 
 function enumerateJsInHtml(arr){
     var ret = "";
-    for(var i=0; i<arr.length; i++){
+    for(var i=0; i < arr.length; i++){
         ret += '<script type="text/javascript" src="'+arr[i]+'"> </script>\n';
     }
     return ret;
@@ -86,7 +85,7 @@ function minifyJs(arr){
 
 function enumerateCSSInHtml(arr){
     var ret = "";
-    for(var i=0; i<arr.length; i++){
+    for(var i=0; i < arr.length; i++){
         ret += '<link rel="stylesheet" type="text/css"  href="' + arr[i] + '"/>\n';
     }
     return ret;
@@ -95,7 +94,7 @@ function enumerateCSSInHtml(arr){
 
 function compileViews(arr){
     var ret = "";
-    for(var i=0; i< arr.length; i++){
+    for(var i=0; i < arr.length; i++){
         var componentName ;
         componentName = arr[i].file.replace(arr[i].folder,"");
         componentName = componentName.replace(/\.html$/i,"");
@@ -113,7 +112,6 @@ function minifyViews(arr){
 try{
     var smakeContent = fs.readFileSync("smakefile");
     var config = JSON.parse(smakeContent);
-
     var target;
     var targetName;
     for(var a in config){
@@ -121,12 +119,13 @@ try{
         targetName = a;
         break;
     }
-
+    console.log("Building target: " + targetName);
     var jsFiles   = resolveJSFiles(config, enumerateJsInHtml);
     var cssFiles  = resolveCSSFiles(config, enumerateCSSInHtml);
     var htmlFiles = resolveHTMLFiles(config, compileViews);
     createIndex(target, jsFiles, cssFiles, htmlFiles);
     console.log("Success!");
+
 } catch(err){
     console.log(">>> Build failed!\nError: " + err + "\nStack:" +  err.stack);
 }
