@@ -17,6 +17,25 @@ function createIndex(config, jsFiles, cssFiles, htmlFiles){
     }
 }
 
+function createSingleJSFile(target, jsFiles){
+    try{
+        var fileName = target["target"];
+        var version  = target["version"];
+        fileName = fileName.replace(/%VERSION%/g, version);
+        console.log("Creating " + fileName);
+        fs.unlink(fileName);
+        for(var i = 0; i < jsFiles.length; i++){
+            console.log("Processing " + jsFiles[i]);
+            var content = fs.readFileSync(jsFiles[i]).toString();
+            fs.appendFileSync(fileName,content);
+        }
+    } catch(err){
+        console.log("Error: " + err + "\nStack:" +  err.stack);
+        throw new Error("Unable to create the target file!");
+    }
+}
+
+
 function walk(fileFormat,pathList, callBack){
     var allFiles = {};
     var basePath;
@@ -78,6 +97,10 @@ function enumerateJsInHtml(arr){
     return ret;
 }
 
+function addNameInArray(arr){
+    return arr;
+}
+
 function minifyJs(arr){
     //todo: put in a single file and minify..
     return "not implemented yet";
@@ -119,11 +142,18 @@ try{
         targetName = a;
         break;
     }
-    console.log("Building target: " + targetName);
-    var jsFiles   = resolveJSFiles(config, enumerateJsInHtml);
-    var cssFiles  = resolveCSSFiles(config, enumerateCSSInHtml);
-    var htmlFiles = resolveHTMLFiles(config, compileViews);
-    createIndex(target, jsFiles, cssFiles, htmlFiles);
+
+    if(target["type"] ==  "singlejs"){
+        console.log("Doing 'singlejs' target: " + targetName);
+        var jsFiles  = resolveJSFiles(config, addNameInArray);
+        createSingleJSFile(target, jsFiles);
+    } else {
+        console.log("Doing debug target: " + targetName);
+        var jsFiles   = resolveJSFiles(config, enumerateJsInHtml);
+        var cssFiles  = resolveCSSFiles(config, enumerateCSSInHtml);
+        var htmlFiles = resolveHTMLFiles(config, compileViews);
+        createIndex(target, jsFiles, cssFiles, htmlFiles);
+    }
     console.log("Success!");
 
 } catch(err){
