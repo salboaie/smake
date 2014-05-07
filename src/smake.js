@@ -17,22 +17,29 @@ function createIndex(config, jsFiles, cssFiles, htmlFiles){
     }
 }
 
-function createSingleJSFile(target, jsFiles){
+function createSingleJSFile(target, jsFiles, enumerator){
     try{
-        var fileName = target["target"];
         var version  = target["version"];
-        fileName = fileName.replace(/%VERSION%/g, version);
+        if(!version){
+            version = "1.0";
+        }
+        var fileName = "js_build"+version+".js";
+
         console.log("Creating " + fileName);
-        fs.unlink(fileName);
+        fs.unlink(fileName, function(){});
+
         for(var i = 0; i < jsFiles.length; i++){
-            console.log("Processing " + jsFiles[i]);
+            //console.log("Processing " + jsFiles[i]);
+            process.stdout.write(".")
             var content = fs.readFileSync(jsFiles[i]).toString();
             fs.appendFileSync(fileName,content);
         }
+        console.log(" ");
     } catch(err){
         console.log("Error: " + err + "\nStack:" +  err.stack);
         throw new Error("Unable to create the target file!");
     }
+    return enumerator([fileName]);
 }
 
 
@@ -128,25 +135,67 @@ function compileViews(arr){
     return ret;
 }
 
+
+function compactViews(arr){
+    var ret = "";
+    var fileContent;
+    process.stdout.write("Compacting views...")
+    for(var i=0; i < arr.length; i++){
+        var componentName ;
+        componentName = arr[i].file.replace(arr[i].folder,"");
+        componentName = componentName.replace(/\.html$/i,"");
+        componentName = componentName.replace(/\//g,".");
+        componentName = componentName.replace(/^./,"");
+
+        fileContent = encodeURI(fs.readFileSync(arr[i].file, "utf8"));
+        ret += 'shape.registerShapeString("' +  componentName + '","' + fileContent + '");\n';
+        process.stdout.write(".")
+    }
+    console.log("");
+    return ret;
+}
+
+
 function minifyViews(arr){
  //not implemented
 }
+
+var firstArg = process.argv[2];
 
 try{
     var smakeContent = fs.readFileSync("smakefile");
     var config = JSON.parse(smakeContent);
     var target;
     var targetName;
-    for(var a in config){
-        target = config[a];
-        targetName = a;
-        break;
+
+    if(firstArg == "--help" || !config[firstArg]){
+        console.log("Specify an valid target, as specified in smakefile (eg. release, debug,etc)");
+        return ;
     }
 
-    if(target["type"] ==  "singlejs"){
-        console.log("Doing 'singlejs' target: " + targetName);
-        var jsFiles  = resolveJSFiles(config, addNameInArray);
-        createSingleJSFile(target, jsFiles);
+    target = config[firstArg];
+    targetName = firstArg;
+
+    if(target["release"] ==  "true"){
+        console.log("Doing 'release' target: " + targetName);
+        if(target["compact_js"] ==  "true")
+        {
+            var jsFiles  = resolveJSFiles(config, addNameInArray);
+            jsFiles   = createSingleJSFile(target, jsFiles, enumerateJsInHtml);
+        } else {
+            var jsFiles   = resolveJSFiles(config, enumerateJsInHtml);
+        }
+
+
+        var cssFiles  = resolveCSSFiles(config, enumerateCSSInHtml);
+
+        if(target["compact_html"] ==  "true"){
+            var htmlFiles = resolveHTMLFiles(config, compactViews);
+        } else {
+            var htmlFiles = resolveHTMLFiles(config, compileViews);
+        }
+
+        createIndex(target, jsFiles, cssFiles, htmlFiles);
     } else {
         console.log("Doing debug target: " + targetName);
         var jsFiles   = resolveJSFiles(config, enumerateJsInHtml);

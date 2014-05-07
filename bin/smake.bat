@@ -1,2 +1,3 @@
-node c:/work/smake/src/smake.js
+node c:/work/smake/src/smake.js %*
+
 
