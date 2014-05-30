@@ -1,4 +1,6 @@
 var fs = require("fs");
+var ncp = require("ncp");
+
 
 function createIndex(config, jsFiles, cssFiles, htmlFiles){
     try{
@@ -43,16 +45,16 @@ function createSingleJSFile(target, jsFiles, enumerator){
 }
 
 
-function walk(fileFormat,pathList, callBack){
+function walk(fileFormat,pathList, collector, callbackCollector){
     var allFiles = {};
     var basePath;
-    function recWalk(path){
-        //console.log("Stat: " + path);
+    function recWalk(path, callBack){
+
         var stat = fs.lstatSync(path);
         if(stat.isDirectory()){
             var files = fs.readdirSync(path);
             for(var i = 0; i< files.length ; i++){
-                recWalk(path + "/" + files[i]);
+                recWalk(path + "/" + files[i], callBack);
             }
         } else {
             if(allFiles[path] == undefined){
@@ -60,7 +62,7 @@ function walk(fileFormat,pathList, callBack){
                 path = path.replace(/^\.\//,"");
                 if(path.match(fileFormat) != null){
                     allFiles[path] = path;
-                    callBack(path, basePath);
+                    callBack(path);
                 }
             }
         }
@@ -68,29 +70,40 @@ function walk(fileFormat,pathList, callBack){
 
     for(var i=0; i< pathList.length; i++ ){
         basePath = pathList[i];
-        recWalk(basePath);
+        var partialRet = [];
+        recWalk(basePath, function(result){
+            if(callbackCollector){
+                callbackCollector(result, basePath);
+            }
+            if(collector){
+                partialRet.push(result);
+            }
+        });
+
+        if(collector){
+            partialRet.sort(function(a,b){return a.localeCompare(b);});
+            partialRet.map(function(v){
+                collector.push(v);
+            });
+        }
     }
 }
 
 function resolveJSFiles(config,callBack){
     var ret = [];
-    walk(/\.js$/i,target["js"], function(result){
-        ret.push(result);
-    });
+    walk(/\.js$/i,target["js"], ret);
     return callBack(ret);
 }
 
 function resolveCSSFiles(config, callBack){
     var ret = [];
-    walk(/\.css$/i,target["css"], function(result){
-        ret.push(result);
-    });
+    walk(/\.css$/i,target["css"], ret);
     return callBack(ret);
 }
 
 function resolveHTMLFiles(config, callBack){
     var ret = [];
-    walk(/\.html$/i,target["html"], function(   file, folder){
+    walk(/\.html$/i,target["html"], null , function(   file, folder){
         ret.push({"file":file,"folder":folder});
     });
     return callBack(ret);
@@ -156,15 +169,19 @@ function compactViews(arr){
 }
 
 
-function minifyViews(arr){
- //not implemented
-}
+
 
 var firstArg = process.argv[2];
 
 try{
     var smakeContent = fs.readFileSync("smakefile");
-    var config = JSON.parse(smakeContent);
+    try{
+        var config = JSON.parse(smakeContent);
+    } catch(err){
+        console.log("Bad JSON in smakefile ", err);
+        return;
+    }
+
     var target;
     var targetName;
 
@@ -203,6 +220,22 @@ try{
         var htmlFiles = resolveHTMLFiles(config, compileViews);
         createIndex(target, jsFiles, cssFiles, htmlFiles);
     }
+
+
+    var cloneCfg = target["buildCopyTo"];
+    if(cloneCfg){
+        for(var v in cloneCfg){
+            for(var i = 0; i< cloneCfg[v].length; i++){
+                console.log("Copying files from " + cloneCfg[v][i] +  " to ", v);
+                ncp(cloneCfg[v][i], v + cloneCfg[v][i], function (err) {
+                    if (err) {
+                        return console.error(err);
+                    }
+                });
+            }
+        }
+    }
+
     console.log("Success!");
 
 } catch(err){
