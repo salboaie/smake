@@ -2,17 +2,17 @@ var fs = require("fs");
 var ncp = require("ncp");
 
 
-function createIndex(config, jsFiles, cssFiles, htmlFiles){
+function createIndex(target, jsFiles, cssFiles, htmlFiles){
     try{
         var template = fs.readFileSync(target["template"]).toString();
         template = template.replace("%REGISTER_STYLES%", cssFiles);
         template = template.replace("%REGISTER_CODE%"  , jsFiles);
         template = template.replace("%REGISTER_VIEWS%" , htmlFiles);
-        template = template.replace("%MAIN_VIEW%" , config.mainView);
-        template = template.replace("%MAIN_CTRL%" , config.mainCtrl);
+        template = template.replace("%MAIN_VIEW%" , target.mainView);
+        template = template.replace("%MAIN_CTRL%" , target.mainCtrl);
 
-        console.log("Creating " + config.target);
-        fs.writeFileSync(config.target,template);
+        console.log("Creating " + target.target);
+        fs.writeFileSync(target.target,template);
     } catch(err){
         console.log("Error: " + err + "\nStack:" +  err.stack);
      throw new Error("Unable to create the target file!");
@@ -89,19 +89,19 @@ function walk(fileFormat,pathList, collector, callbackCollector){
     }
 }
 
-function resolveJSFiles(config,callBack){
+function resolveJSFiles(target,callBack){
     var ret = [];
     walk(/\.js$/i,target["js"], ret);
     return callBack(ret);
 }
 
-function resolveCSSFiles(config, callBack){
+function resolveCSSFiles(target, callBack){
     var ret = [];
     walk(/\.css$/i,target["css"], ret);
     return callBack(ret);
 }
 
-function resolveHTMLFiles(config, callBack){
+function resolveHTMLFiles(target, callBack){
     var ret = [];
     walk(/\.html$/i,target["html"], null , function(   file, folder){
         ret.push({"file":file,"folder":folder});
@@ -193,31 +193,47 @@ try{
     target = config[firstArg];
     targetName = firstArg;
 
+    var base = target["extend"];
+    if(base){
+        base = config[base];
+        for(var v in base){
+            if(target[v] instanceof Array ){
+                var a = base[v];
+                for(var k =0; k < a.length ; k++){
+                    target[v].push(a[k]);
+                }
+            } else {
+                target[v] = base[v];
+            }
+        }
+    }
+
+
     if(target["release"] ==  "true"){
         console.log("Doing 'release' target: " + targetName);
         if(target["compact_js"] ==  "true")
         {
-            var jsFiles  = resolveJSFiles(config, addNameInArray);
+            var jsFiles  = resolveJSFiles(target, addNameInArray);
             jsFiles   = createSingleJSFile(target, jsFiles, enumerateJsInHtml);
         } else {
-            var jsFiles   = resolveJSFiles(config, enumerateJsInHtml);
+            var jsFiles   = resolveJSFiles(target, enumerateJsInHtml);
         }
 
 
-        var cssFiles  = resolveCSSFiles(config, enumerateCSSInHtml);
+        var cssFiles  = resolveCSSFiles(target, enumerateCSSInHtml);
 
         if(target["compact_html"] ==  "true"){
-            var htmlFiles = resolveHTMLFiles(config, compactViews);
+            var htmlFiles = resolveHTMLFiles(target, compactViews);
         } else {
-            var htmlFiles = resolveHTMLFiles(config, compileViews);
+            var htmlFiles = resolveHTMLFiles(target, compileViews);
         }
 
         createIndex(target, jsFiles, cssFiles, htmlFiles);
     } else {
         console.log("Doing debug target: " + targetName);
-        var jsFiles   = resolveJSFiles(config, enumerateJsInHtml);
-        var cssFiles  = resolveCSSFiles(config, enumerateCSSInHtml);
-        var htmlFiles = resolveHTMLFiles(config, compileViews);
+        var jsFiles   = resolveJSFiles(target, enumerateJsInHtml);
+        var cssFiles  = resolveCSSFiles(target, enumerateCSSInHtml);
+        var htmlFiles = resolveHTMLFiles(target, compileViews);
         createIndex(target, jsFiles, cssFiles, htmlFiles);
     }
 
