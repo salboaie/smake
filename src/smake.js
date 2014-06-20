@@ -7,6 +7,22 @@ function createIndex(target, jsFiles, cssFiles, htmlFiles){
         var template = fs.readFileSync(target["template"]).toString();
         template = template.replace("%REGISTER_STYLES%", cssFiles);
         template = template.replace("%REGISTER_CODE%"  , jsFiles);
+
+        var cfg = target["config"];
+
+        if(cfg){
+            var cfgDump = '<script type="text/javascript">' +
+                    '\n\tshape__config =' + JSON.stringify(cfg) + ';' +
+                    '\n\tShapeAppParseConfig(shape__config)\n' +
+                '</script>\n';
+        } else {
+            var cfgDump = '<script type="text/javascript">' +
+                '\n\tShapeAppParseConfig(shape__config)\n' +
+            '</script>\n';
+        }
+
+        template = template.replace("%REGISTER_CONFIG%", cfgDump);
+
         template = template.replace("%REGISTER_VIEWS%" , htmlFiles);
         template = template.replace("%MAIN_VIEW%" , target.mainView);
         template = template.replace("%MAIN_CTRL%" , target.mainCtrl);
