@@ -84,7 +84,8 @@ function walk(fileFormat,pathList, collector, callbackCollector){
         }
     }
 
-    for(var i=0; i< pathList.length; i++ ){
+
+        for(var i=0; i< pathList.length; i++ ){
         basePath = pathList[i];
         var partialRet = [];
         recWalk(basePath, function(result){
